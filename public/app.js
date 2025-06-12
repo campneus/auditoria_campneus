@@ -975,9 +975,129 @@ async function deleteUser(id) {
 }
 
 // Funções de relatórios
-function generateReport(type) {
-    console.log('Gerando relatório:', type);
-    // TODO: Implementar geração de relatórios
-    showError('Funcionalidade de relatórios em desenvolvimento');
+async function generateReport(type) {
+    try {
+        const reportResults = document.getElementById('reportResults');
+        if (!reportResults) return;
+
+        reportResults.innerHTML = '<div class="loading">Gerando relatório...</div>';
+
+        let data;
+        let html = '';
+
+        switch (type) {
+            case 'last-visit':
+                data = await api.get('/reports/last-visit');
+                html = '<h4>Última Visita por Filial</h4>';
+                if (data.length === 0) {
+                    html += '<p class="no-data">Nenhum dado encontrado</p>';
+                } else {
+                    html += '<table class="data-table"><thead><tr><th>Filial</th><th>Última Visita</th><th>Score</th><th>Status</th></tr></thead><tbody>';
+                    data.forEach(item => {
+                        const lastVisit = item.last_visit ? new Date(item.last_visit).toLocaleDateString('pt-BR') : 'Nunca';
+                        html += `
+                            <tr>
+                                <td>${item.branch_name}</td>
+                                <td>${lastVisit}</td>
+                                <td>${item.last_score || '-'}%</td>
+                                <td><span class="status ${item.status}">${item.status_text}</span></td>
+                            </tr>
+                        `;
+                    });
+                    html += '</tbody></table>';
+                }
+                break;
+
+            case 'to-audit':
+                data = await api.get('/reports/to-audit');
+                html = '<h4>Filiais para Auditar</h4>';
+                if (data.length === 0) {
+                    html += '<p class="no-data">Todas as filiais estão em dia</p>';
+                } else {
+                    html += '<table class="data-table"><thead><tr><th>Filial</th><th>Última Visita</th><th>Dias sem Visita</th><th>Prioridade</th></tr></thead><tbody>';
+                    data.forEach(item => {
+                        const lastVisit = item.last_visit ? new Date(item.last_visit).toLocaleDateString('pt-BR') : 'Nunca';
+                        const priority = item.days_without_visit > 365 ? 'Alta' : item.days_without_visit > 180 ? 'Média' : 'Baixa';
+                        html += `
+                            <tr>
+                                <td>${item.branch_name}</td>
+                                <td>${lastVisit}</td>
+                                <td>${item.days_without_visit || 'N/A'}</td>
+                                <td><span class="status ${priority.toLowerCase()}">${priority}</span></td>
+                            </tr>
+                        `;
+                    });
+                    html += '</tbody></table>';
+                }
+                break;
+
+            case 'by-period':
+                // Implementar filtro de período
+                const startDate = prompt('Data inicial (YYYY-MM-DD):');
+                const endDate = prompt('Data final (YYYY-MM-DD):');
+                
+                if (!startDate || !endDate) {
+                    reportResults.innerHTML = '<p class="error">Período não informado</p>';
+                    return;
+                }
+
+                data = await api.get(`/reports/by-period?start=${startDate}&end=${endDate}`);
+                html = `<h4>Auditorias de ${new Date(startDate).toLocaleDateString('pt-BR')} a ${new Date(endDate).toLocaleDateString('pt-BR')}</h4>`;
+                if (data.length === 0) {
+                    html += '<p class="no-data">Nenhuma auditoria encontrada no período</p>';
+                } else {
+                    html += '<table class="data-table"><thead><tr><th>Filial</th><th>Data</th><th>Score</th><th>Resumo</th><th>Auditor</th></tr></thead><tbody>';
+                    data.forEach(item => {
+                        html += `
+                            <tr>
+                                <td>${item.branch_name}</td>
+                                <td>${new Date(item.visit_date).toLocaleDateString('pt-BR')}</td>
+                                <td>${item.score}%</td>
+                                <td><span class="status ${item.general_summary.replace(' ', '-')}">${item.general_summary}</span></td>
+                                <td>${item.auditor_name}</td>
+                            </tr>
+                        `;
+                    });
+                    html += '</tbody></table>';
+                }
+                break;
+
+            case 'auditor-performance':
+                data = await api.get('/reports/auditor-performance');
+                html = '<h4>Performance dos Auditores</h4>';
+                if (data.length === 0) {
+                    html += '<p class="no-data">Nenhum dado encontrado</p>';
+                } else {
+                    html += '<table class="data-table"><thead><tr><th>Auditor</th><th>Total de Auditorias</th><th>Score Médio</th><th>Última Auditoria</th></tr></thead><tbody>';
+                    data.forEach(item => {
+                        const lastAudit = item.last_audit ? new Date(item.last_audit).toLocaleDateString('pt-BR') : 'Nunca';
+                        html += `
+                            <tr>
+                                <td>${item.auditor_name}</td>
+                                <td>${item.total_audits}</td>
+                                <td>${item.avg_score ? Math.round(item.avg_score) : 0}%</td>
+                                <td>${lastAudit}</td>
+                            </tr>
+                        `;
+                    });
+                    html += '</tbody></table>';
+                }
+                break;
+
+            default:
+                html = '<p class="error">Tipo de relatório não implementado</p>';
+        }
+
+        reportResults.innerHTML = html;
+        showSuccess('Relatório gerado com sucesso!');
+
+    } catch (error) {
+        console.error('Erro ao gerar relatório:', error);
+        const reportResults = document.getElementById('reportResults');
+        if (reportResults) {
+            reportResults.innerHTML = '<p class="error">Erro ao gerar relatório: ' + error.message + '</p>';
+        }
+        showError('Erro ao gerar relatório: ' + error.message);
+    }
 }
 

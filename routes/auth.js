@@ -28,8 +28,9 @@ router.post('/login', [
 
     const user = result.rows[0];
 
-    // Verificar senha (por enquanto comparação direta, em produção usar bcrypt)
-    if (password !== user.password) {
+    // Verificar senha com bcrypt
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
       return res.status(401).json({ error: 'Credenciais inválidas' });
     }
 

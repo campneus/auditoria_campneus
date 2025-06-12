@@ -6,11 +6,10 @@
     <title>Dashboard - Auditoria - Campneus</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <!-- Login Modal -->
-    <div id="loginModal" class="modal">
+    <div id="loginModal" class="modal" style="display: block;">
         <div class="modal-content">
             <div class="login-header">
                 <i class="fas fa-car-tire"></i>
@@ -111,11 +110,11 @@
                     </div>
                     <div class="stat-card">
                         <div class="stat-icon">
-                            <i class="fas fa-star"></i>
+                            <i class="fas fa-calendar-check"></i>
                         </div>
                         <div class="stat-content">
-                            <h3 id="avgScore">0</h3>
-                            <p>Score Médio</p>
+                            <h3 id="branchesVisitedLast6Months">0</h3>
+                            <p>Visitadas (6 meses)</p>
                         </div>
                     </div>
                 </div>
@@ -123,11 +122,11 @@
                 <!-- Charts Section -->
                 <div class="charts-grid">
                     <div class="chart-card">
-                        <h3>Scores Mensais</h3>
+                        <h3><i class="fas fa-chart-line"></i> Scores Mensais</h3>
                         <canvas id="monthlyScoresChart"></canvas>
                     </div>
                     <div class="chart-card">
-                        <h3>Resumo Geral</h3>
+                        <h3><i class="fas fa-chart-pie"></i> Resumo Geral</h3>
                         <canvas id="summaryChart"></canvas>
                     </div>
                 </div>
@@ -135,12 +134,16 @@
                 <!-- Recent Activities -->
                 <div class="activities-grid">
                     <div class="activity-card">
-                        <h3><i class="fas fa-calendar-check"></i> Próximas Visitas</h3>
-                        <div id="upcomingVisits" class="activity-list"></div>
+                        <h3><i class="fas fa-calendar-plus"></i> Próximas Visitas</h3>
+                        <div id="upcomingVisits" class="activity-list">
+                            <div class="loading">Carregando...</div>
+                        </div>
                     </div>
                     <div class="activity-card">
                         <h3><i class="fas fa-history"></i> Últimas Auditorias</h3>
-                        <div id="recentAudits" class="activity-list"></div>
+                        <div id="recentAudits" class="activity-list">
+                            <div class="loading">Carregando...</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -153,20 +156,9 @@
                         <i class="fas fa-plus"></i> Nova Auditoria
                     </button>
                 </div>
-                
-                <!-- Filters -->
-                <div class="filters">
-                    <input type="date" id="auditStartDate" placeholder="Data Início">
-                    <input type="date" id="auditEndDate" placeholder="Data Fim">
-                    <select id="auditBranchFilter">
-                        <option value="">Todas as Filiais</option>
-                    </select>
-                    <button id="filterAuditsBtn" class="btn btn-secondary">
-                        <i class="fas fa-filter"></i> Filtrar
-                    </button>
+                <div id="auditsContainer" class="table-container">
+                    <div class="loading">Carregando auditorias...</div>
                 </div>
-
-                <div id="auditsTable" class="table-container"></div>
             </div>
 
             <!-- Schedules Page -->
@@ -177,20 +169,22 @@
                         <i class="fas fa-plus"></i> Novo Agendamento
                     </button>
                 </div>
-                
-                <div id="schedulesTable" class="table-container"></div>
+                <div id="schedulesContainer" class="table-container">
+                    <div class="loading">Carregando agendamentos...</div>
+                </div>
             </div>
 
             <!-- Branches Page -->
             <div id="branchesPage" class="page">
                 <div class="page-header">
                     <h2><i class="fas fa-building"></i> Filiais</h2>
-                    <button id="newBranchBtn" class="btn btn-primary" style="display: none;">
+                    <button id="newBranchBtn" class="btn btn-primary">
                         <i class="fas fa-plus"></i> Nova Filial
                     </button>
                 </div>
-                
-                <div id="branchesTable" class="table-container"></div>
+                <div id="branchesContainer" class="table-container">
+                    <div class="loading">Carregando filiais...</div>
+                </div>
             </div>
 
             <!-- Reports Page -->
@@ -198,30 +192,24 @@
                 <div class="page-header">
                     <h2><i class="fas fa-chart-bar"></i> Relatórios</h2>
                 </div>
-                
                 <div class="reports-grid">
-                    <div class="report-card" data-report="last-visit">
-                        <i class="fas fa-clock"></i>
+                    <div class="report-card">
                         <h3>Última Visita por Filial</h3>
-                        <p>Relatório das últimas visitas realizadas em cada filial</p>
+                        <button class="btn btn-primary" onclick="generateReport('last-visit')">Gerar Relatório</button>
                     </div>
-                    <div class="report-card" data-report="to-audit">
-                        <i class="fas fa-exclamation-circle"></i>
+                    <div class="report-card">
                         <h3>Filiais para Auditar</h3>
-                        <p>Filiais que precisam de auditoria</p>
+                        <button class="btn btn-primary" onclick="generateReport('to-audit')">Gerar Relatório</button>
                     </div>
-                    <div class="report-card" data-report="by-period">
-                        <i class="fas fa-calendar-week"></i>
+                    <div class="report-card">
                         <h3>Auditorias por Período</h3>
-                        <p>Relatório de auditorias em período específico</p>
+                        <button class="btn btn-primary" onclick="generateReport('by-period')">Gerar Relatório</button>
                     </div>
-                    <div class="report-card" data-report="auditor-performance">
-                        <i class="fas fa-user-check"></i>
+                    <div class="report-card">
                         <h3>Performance dos Auditores</h3>
-                        <p>Análise de performance por auditor</p>
+                        <button class="btn btn-primary" onclick="generateReport('auditor-performance')">Gerar Relatório</button>
                     </div>
                 </div>
-                
                 <div id="reportResults" class="report-results"></div>
             </div>
 
@@ -233,8 +221,9 @@
                         <i class="fas fa-plus"></i> Novo Usuário
                     </button>
                 </div>
-                
-                <div id="usersTable" class="table-container"></div>
+                <div id="usersContainer" class="table-container">
+                    <div class="loading">Carregando usuários...</div>
+                </div>
             </div>
         </main>
     </div>
@@ -432,6 +421,7 @@
             </form>
         </div>
     </div>
+
     <!-- Schedule Modal -->
     <div id="scheduleModal" class="modal">
         <div class="modal-content">

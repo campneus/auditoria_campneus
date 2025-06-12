@@ -1,4 +1,3 @@
-// Configuração da API
 const API_BASE_URL = '/api';
 let authToken = localStorage.getItem('authToken');
 let currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
@@ -61,19 +60,28 @@ const api = {
 
 // Gerenciamento de autenticação
 const auth = {
-    async login(username, password) {
-        try {
-            const response = await api.post('/auth/login', { username, password });
-            authToken = response.token;
-            currentUser = response.user;
-            
-            localStorage.setItem('authToken', authToken);
-            localStorage.setItem('currentUser', JSON.stringify(currentUser));
-            
-            return response;
-        } catch (error) {
-            throw error;
+    login(token, user) {
+        authToken = token;
+        currentUser = user;
+        localStorage.setItem('authToken', token);
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        
+        // Esconder modal de login
+        document.getElementById('loginModal').style.display = 'none';
+        
+        // Mostrar aplicação
+        document.getElementById('app').style.display = 'block';
+        
+        // Atualizar info do usuário
+        document.getElementById('userInfo').textContent = `${user.username} (${user.role})`;
+        
+        // Mostrar menu de usuários se for admin
+        if (user.role === 'administrador') {
+            document.getElementById('usersNav').style.display = 'block';
         }
+        
+        // Carregar dashboard
+        pageManager.showPage('dashboard');
     },
 
     logout() {
@@ -81,7 +89,15 @@ const auth = {
         currentUser = {};
         localStorage.removeItem('authToken');
         localStorage.removeItem('currentUser');
-        showLogin();
+        
+        // Mostrar modal de login
+        document.getElementById('loginModal').style.display = 'block';
+        
+        // Esconder aplicação
+        document.getElementById('app').style.display = 'none';
+        
+        // Limpar formulário
+        document.getElementById('loginForm').reset();
     },
 
     isAuthenticated() {
@@ -104,13 +120,19 @@ const pageManager = {
         });
 
         // Mostrar página selecionada
-        document.getElementById(pageId + 'Page').classList.add('active');
+        const targetPage = document.getElementById(pageId + 'Page');
+        if (targetPage) {
+            targetPage.classList.add('active');
+        }
 
         // Atualizar navegação
         document.querySelectorAll('.nav-link').forEach(link => {
             link.classList.remove('active');
         });
-        document.querySelector(`[data-page="${pageId}"]`).classList.add('active');
+        const activeLink = document.querySelector(`[data-page="${pageId}"]`);
+        if (activeLink) {
+            activeLink.classList.add('active');
+        }
 
         this.currentPage = pageId;
 
@@ -119,27 +141,32 @@ const pageManager = {
     },
 
     async loadPageData(pageId) {
-        switch (pageId) {
-            case 'dashboard':
-                await loadDashboard();
-                break;
-            case 'audits':
-                await loadAudits();
-                break;
-            case 'schedules':
-                await loadSchedules();
-                break;
-            case 'branches':
-                await loadBranches();
-                break;
-            case 'reports':
-                // Relatórios são carregados sob demanda
-                break;
-            case 'users':
-                if (auth.isAdmin()) {
-                    await loadUsers();
-                }
-                break;
+        try {
+            switch (pageId) {
+                case 'dashboard':
+                    await loadDashboard();
+                    break;
+                case 'audits':
+                    await loadAudits();
+                    break;
+                case 'schedules':
+                    await loadSchedules();
+                    break;
+                case 'branches':
+                    await loadBranches();
+                    break;
+                case 'reports':
+                    // Relatórios são carregados sob demanda
+                    break;
+                case 'users':
+                    if (auth.isAdmin()) {
+                        await loadUsers();
+                    }
+                    break;
+            }
+        } catch (error) {
+            console.error('Erro ao carregar dados da página:', error);
+            showError('Erro ao carregar dados: ' + error.message);
         }
     }
 };
@@ -148,418 +175,356 @@ const pageManager = {
 async function loadDashboard() {
     try {
         console.log('Loading dashboard...');
-        showLoading('dashboardPage');
-        
         const data = await api.get('/dashboard');
         console.log('Dashboard data received:', data);
-        
-        // Verificar se os elementos existem antes de atualizar
+
+        // Atualizar cards de estatísticas
         const totalBranchesEl = document.getElementById('totalBranches');
-        const branchesVisitedEl = document.getElementById('branchesVisitedLastYear');
-        const branchesNotVisitedEl = document.getElementById('branchesNotVisitedLastYear');
-        const avgScoreEl = document.getElementById('avgScore');
-        
+        const branchesVisitedLastYearEl = document.getElementById('branchesVisitedLastYear');
+        const branchesNotVisitedLastYearEl = document.getElementById('branchesNotVisitedLastYear');
+        const branchesVisitedLast6MonthsEl = document.getElementById('branchesVisitedLast6Months');
+
         if (totalBranchesEl) totalBranchesEl.textContent = data.totalBranches || 0;
-        if (branchesVisitedEl) branchesVisitedEl.textContent = data.branchesVisitedLastYear || 0;
-        if (branchesNotVisitedEl) branchesNotVisitedEl.textContent = data.branchesNotVisitedLastYear || 0;
-        if (avgScoreEl) avgScoreEl.textContent = (data.scoreStats?.avgScore || 0) + '%';
+        if (branchesVisitedLastYearEl) branchesVisitedLastYearEl.textContent = data.branchesVisitedLastYear || 0;
+        if (branchesNotVisitedLastYearEl) branchesNotVisitedLastYearEl.textContent = data.branchesNotVisitedLastYear || 0;
+        if (branchesVisitedLast6MonthsEl) branchesVisitedLast6MonthsEl.textContent = data.branchesVisitedLast6Months || 0;
 
         // Carregar gráficos
-        await loadCharts();
+        await loadCharts(data);
 
         // Carregar atividades recentes
-        loadUpcomingVisits(data.upcomingVisits || []);
-        loadRecentAudits(data.recentAudits || []);
+        await loadUpcomingVisits();
+        await loadRecentAudits();
 
-        hideLoading('dashboardPage');
-        console.log('Dashboard loaded successfully');
     } catch (error) {
         console.error('Erro ao carregar dashboard:', error);
         showError('Erro ao carregar dados do dashboard: ' + error.message);
-        hideLoading('dashboardPage');
     }
 }
 
-async function loadCharts() {
+async function loadCharts(data) {
     try {
         // Gráfico de scores mensais
-        const monthlyData = await api.get('/dashboard/charts/monthly-scores');
-        createMonthlyScoresChart(monthlyData);
+        const monthlyChart = document.getElementById('monthlyScoresChart');
+        if (monthlyChart) {
+            createMonthlyScoresChart(data.monthlyScores || []);
+        }
 
-        // Gráfico de distribuição de resumos
-        const summaryData = await api.get('/dashboard/charts/summary-distribution');
-        createSummaryChart(summaryData);
+        // Gráfico de resumo geral
+        const summaryChart = document.getElementById('summaryChart');
+        if (summaryChart) {
+            createSummaryChart(data.summaryDistribution || {});
+        }
     } catch (error) {
         console.error('Erro ao carregar gráficos:', error);
     }
 }
 
 function createMonthlyScoresChart(data) {
-    const ctx = document.getElementById('monthlyScoresChart').getContext('2d');
-    new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: data.map(item => new Date(item.month).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })),
-            datasets: [{
-                label: 'Score Médio',
-                data: data.map(item => item.avgScore),
-                borderColor: '#667eea',
-                backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                tension: 0.4,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 100
+    const ctx = document.getElementById('monthlyScoresChart');
+    if (!ctx) return;
+
+    try {
+        const chart = ctx.getContext('2d');
+        new Chart(chart, {
+            type: 'line',
+            data: {
+                labels: data.map(item => item.month) || [],
+                datasets: [{
+                    label: 'Score Médio',
+                    data: data.map(item => item.avgScore) || [],
+                    borderColor: '#FFD700',
+                    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
                 }
             }
-        }
-    });
+        });
+    } catch (error) {
+        console.error('Erro ao criar gráfico mensal:', error);
+    }
 }
 
 function createSummaryChart(data) {
-    const ctx = document.getElementById('summaryChart').getContext('2d');
-    new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: data.map(item => item.summary),
-            datasets: [{
-                data: data.map(item => item.total),
-                backgroundColor: [
-                    '#28a745',
-                    '#ffc107',
-                    '#dc3545'
-                ]
-            }]
-        },
-        options: {
-            responsive: true
-        }
-    });
+    const ctx = document.getElementById('summaryChart');
+    if (!ctx) return;
+
+    try {
+        const chart = ctx.getContext('2d');
+        new Chart(chart, {
+            type: 'doughnut',
+            data: {
+                labels: ['De Acordo', 'Com Atenção', 'Em Desacordo'],
+                datasets: [{
+                    data: [
+                        data['de acordo'] || 0,
+                        data['com pontos de atenção'] || 0,
+                        data['em desacordo'] || 0
+                    ],
+                    backgroundColor: ['#28a745', '#ffc107', '#dc3545']
+                }]
+            },
+            options: {
+                responsive: true
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao criar gráfico de resumo:', error);
+    }
 }
 
-function loadUpcomingVisits(visits) {
-    const container = document.getElementById('upcomingVisits');
-    container.innerHTML = '';
-
-    if (visits.length === 0) {
-        container.innerHTML = '<p class="text-center">Nenhuma visita agendada</p>';
-        return;
-    }
-
-    visits.forEach(visit => {
-        const item = document.createElement('div');
-        item.className = 'activity-item';
-        item.innerHTML = `
-            <div class="activity-info">
-                <h4>${visit.branch_name} (${visit.branch_code})</h4>
-                <p>${new Date(visit.scheduled_date).toLocaleDateString('pt-BR')} - ${visit.audit_type}</p>
-            </div>
-        `;
-        container.appendChild(item);
-    });
-}
-
-function loadRecentAudits(audits) {
-    const container = document.getElementById('recentAudits');
-    container.innerHTML = '';
-
-    if (audits.length === 0) {
-        container.innerHTML = '<p class="text-center">Nenhuma auditoria recente</p>';
-        return;
-    }
-
-    audits.forEach(audit => {
-        const item = document.createElement('div');
-        item.className = 'activity-item';
+async function loadUpcomingVisits() {
+    try {
+        const visits = await api.get('/schedules/upcoming');
+        const container = document.getElementById('upcomingVisits');
         
-        let badgeClass = 'badge-success';
-        if (audit.general_summary === 'com pontos de atenção') badgeClass = 'badge-warning';
-        if (audit.general_summary === 'em desacordo') badgeClass = 'badge-danger';
+        if (!container) return;
 
-        item.innerHTML = `
-            <div class="activity-info">
-                <h4>${audit.branch_name} (${audit.branch_code})</h4>
-                <p>${new Date(audit.visit_date).toLocaleDateString('pt-BR')} - ${audit.auditor_name}</p>
-            </div>
-            <div class="activity-badge ${badgeClass}">
-                ${audit.score}%
-            </div>
-        `;
-        container.appendChild(item);
-    });
+        if (visits.length === 0) {
+            container.innerHTML = '<p class="no-data">Nenhuma visita agendada</p>';
+            return;
+        }
+
+        let html = '<ul class="activity-list">';
+        visits.forEach(visit => {
+            html += `
+                <li class="activity-item">
+                    <div class="activity-info">
+                        <strong>${visit.branch_name}</strong>
+                        <span class="activity-date">${new Date(visit.scheduled_date).toLocaleDateString('pt-BR')}</span>
+                    </div>
+                    <span class="activity-type">${visit.audit_type}</span>
+                </li>
+            `;
+        });
+        html += '</ul>';
+        
+        container.innerHTML = html;
+    } catch (error) {
+        console.error('Erro ao carregar próximas visitas:', error);
+        const container = document.getElementById('upcomingVisits');
+        if (container) {
+            container.innerHTML = '<p class="error">Erro ao carregar dados</p>';
+        }
+    }
+}
+
+async function loadRecentAudits() {
+    try {
+        const audits = await api.get('/audits/recent');
+        const container = document.getElementById('recentAudits');
+        
+        if (!container) return;
+
+        if (audits.length === 0) {
+            container.innerHTML = '<p class="no-data">Nenhuma auditoria recente</p>';
+            return;
+        }
+
+        let html = '<ul class="activity-list">';
+        audits.forEach(audit => {
+            html += `
+                <li class="activity-item">
+                    <div class="activity-info">
+                        <strong>${audit.branch_name}</strong>
+                        <span class="activity-date">${new Date(audit.visit_date).toLocaleDateString('pt-BR')}</span>
+                    </div>
+                    <span class="activity-score">${audit.score}%</span>
+                </li>
+            `;
+        });
+        html += '</ul>';
+        
+        container.innerHTML = html;
+    } catch (error) {
+        console.error('Erro ao carregar auditorias recentes:', error);
+        const container = document.getElementById('recentAudits');
+        if (container) {
+            container.innerHTML = '<p class="error">Erro ao carregar dados</p>';
+        }
+    }
 }
 
 async function loadAudits() {
     try {
-        showLoading('auditsTable');
         const audits = await api.get('/audits');
-        const branches = await api.get('/branches');
+        const container = document.getElementById('auditsContainer');
         
-        // Preencher filtro de filiais
-        const branchFilter = document.getElementById('auditBranchFilter');
-        branchFilter.innerHTML = '<option value="">Todas as Filiais</option>';
-        branches.forEach(branch => {
-            branchFilter.innerHTML += `<option value="${branch.id}">${branch.name}</option>`;
+        if (!container) return;
+
+        if (audits.length === 0) {
+            container.innerHTML = '<p class="no-data">Nenhuma auditoria encontrada</p>';
+            return;
+        }
+
+        let html = '<table class="data-table"><thead><tr>';
+        html += '<th>Filial</th><th>Data</th><th>Score</th><th>Resumo</th><th>Ações</th>';
+        html += '</tr></thead><tbody>';
+
+        audits.forEach(audit => {
+            html += `
+                <tr>
+                    <td>${audit.branch_name}</td>
+                    <td>${new Date(audit.visit_date).toLocaleDateString('pt-BR')}</td>
+                    <td>${audit.score}%</td>
+                    <td><span class="status ${audit.general_summary.replace(' ', '-')}">${audit.general_summary}</span></td>
+                    <td>
+                        <button onclick="viewAudit(${audit.id})" class="btn btn-sm btn-info">Ver</button>
+                        <button onclick="editAudit(${audit.id})" class="btn btn-sm btn-warning">Editar</button>
+                        <button onclick="deleteAudit(${audit.id})" class="btn btn-sm btn-danger">Excluir</button>
+                    </td>
+                </tr>
+            `;
         });
 
-        displayAuditsTable(audits);
-        hideLoading('auditsTable');
+        html += '</tbody></table>';
+        container.innerHTML = html;
     } catch (error) {
         console.error('Erro ao carregar auditorias:', error);
-        showError('Erro ao carregar auditorias');
-        hideLoading('auditsTable');
+        showError('Erro ao carregar auditorias: ' + error.message);
     }
-}
-
-function displayAuditsTable(audits) {
-    const container = document.getElementById('auditsTable');
-    
-    if (audits.length === 0) {
-        container.innerHTML = '<p class="text-center">Nenhuma auditoria encontrada</p>';
-        return;
-    }
-
-    let html = `
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Filial</th>
-                    <th>Data da Visita</th>
-                    <th>Auditor</th>
-                    <th>Score</th>
-                    <th>Resumo</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
-
-    audits.forEach(audit => {
-        let summaryClass = 'text-success';
-        if (audit.general_summary === 'com pontos de atenção') summaryClass = 'text-warning';
-        if (audit.general_summary === 'em desacordo') summaryClass = 'text-danger';
-
-        html += `
-            <tr>
-                <td>${audit.branch_name} (${audit.branch_code})</td>
-                <td>${new Date(audit.visit_date).toLocaleDateString('pt-BR')}</td>
-                <td>${audit.auditor_name}</td>
-                <td>${audit.score}%</td>
-                <td class="${summaryClass}">${audit.general_summary}</td>
-                <td>
-                    <button class="btn btn-secondary" onclick="viewAudit(${audit.id})">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    ${(auth.isAdmin() || audit.auditor_id === currentUser.id) ? 
-                        `<button class="btn btn-primary" onclick="editAudit(${audit.id})">
-                            <i class="fas fa-edit"></i>
-                        </button>` : ''
-                    }
-                    ${auth.isAdmin() ? 
-                        `<button class="btn btn-danger" onclick="deleteAudit(${audit.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>` : ''
-                    }
-                </td>
-            </tr>
-        `;
-    });
-
-    html += '</tbody></table>';
-    container.innerHTML = html;
-}
-
-async function loadBranches() {
-    try {
-        showLoading('branchesTable');
-        const branches = await api.get('/branches');
-        displayBranchesTable(branches);
-        hideLoading('branchesTable');
-    } catch (error) {
-        console.error('Erro ao carregar filiais:', error);
-        showError('Erro ao carregar filiais');
-        hideLoading('branchesTable');
-    }
-}
-
-function displayBranchesTable(branches) {
-    const container = document.getElementById('branchesTable');
-    
-    if (branches.length === 0) {
-        container.innerHTML = '<p class="text-center">Nenhuma filial encontrada</p>';
-        return;
-    }
-
-    let html = `
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Código</th>
-                    <th>Nome</th>
-                    <th>CNPJ</th>
-                    <th>Estado</th>
-                    <th>Cidade</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
-
-    branches.forEach(branch => {
-        html += `
-            <tr>
-                <td>${branch.code}</td>
-                <td>${branch.name}</td>
-                <td>${branch.cnpj}</td>
-                <td>${branch.state}</td>
-                <td>${branch.city}</td>
-                <td>
-                    <button class="btn btn-secondary" onclick="viewBranch(${branch.id})">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    ${auth.isAdmin() ? 
-                        `<button class="btn btn-primary" onclick="editBranch(${branch.id})">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-danger" onclick="deleteBranch(${branch.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>` : ''
-                    }
-                </td>
-            </tr>
-        `;
-    });
-
-    html += '</tbody></table>';
-    container.innerHTML = html;
 }
 
 async function loadSchedules() {
     try {
-        showLoading('schedulesTable');
         const schedules = await api.get('/schedules');
-        displaySchedulesTable(schedules);
-        hideLoading('schedulesTable');
+        const container = document.getElementById('schedulesContainer');
+        
+        if (!container) return;
+
+        if (schedules.length === 0) {
+            container.innerHTML = '<p class="no-data">Nenhum agendamento encontrado</p>';
+            return;
+        }
+
+        let html = '<table class="data-table"><thead><tr>';
+        html += '<th>Filial</th><th>Data</th><th>Tipo</th><th>Status</th><th>Ações</th>';
+        html += '</tr></thead><tbody>';
+
+        schedules.forEach(schedule => {
+            const status = new Date(schedule.scheduled_date) > new Date() ? 'Agendado' : 'Vencido';
+            html += `
+                <tr>
+                    <td>${schedule.branch_name}</td>
+                    <td>${new Date(schedule.scheduled_date).toLocaleDateString('pt-BR')}</td>
+                    <td>${schedule.audit_type}</td>
+                    <td><span class="status ${status.toLowerCase()}">${status}</span></td>
+                    <td>
+                        <button onclick="editSchedule(${schedule.id})" class="btn btn-sm btn-warning">Editar</button>
+                        <button onclick="deleteSchedule(${schedule.id})" class="btn btn-sm btn-danger">Excluir</button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
     } catch (error) {
         console.error('Erro ao carregar agendamentos:', error);
-        showError('Erro ao carregar agendamentos');
-        hideLoading('schedulesTable');
+        showError('Erro ao carregar agendamentos: ' + error.message);
     }
 }
 
-function displaySchedulesTable(schedules) {
-    const container = document.getElementById('schedulesTable');
-    
-    if (schedules.length === 0) {
-        container.innerHTML = '<p class="text-center">Nenhum agendamento encontrado</p>';
-        return;
-    }
+async function loadBranches() {
+    try {
+        const branches = await api.get('/branches');
+        const container = document.getElementById('branchesContainer');
+        
+        if (!container) return;
 
-    let html = `
-        <table class="table">
-            <thead>
+        if (branches.length === 0) {
+            container.innerHTML = '<p class="no-data">Nenhuma filial encontrada</p>';
+            return;
+        }
+
+        let html = '<table class="data-table"><thead><tr>';
+        html += '<th>Código</th><th>Nome</th><th>CNPJ</th><th>Estado</th><th>Cidade</th><th>Ações</th>';
+        html += '</tr></thead><tbody>';
+
+        branches.forEach(branch => {
+            html += `
                 <tr>
-                    <th>Filial</th>
-                    <th>Data Agendada</th>
-                    <th>Tipo de Auditoria</th>
-                    <th>Ações</th>
+                    <td>${branch.code}</td>
+                    <td>${branch.name}</td>
+                    <td>${branch.cnpj}</td>
+                    <td>${branch.state}</td>
+                    <td>${branch.city}</td>
+                    <td>
+                        <button onclick="viewBranch(${branch.id})" class="btn btn-sm btn-info">Ver</button>
+                        <button onclick="editBranch(${branch.id})" class="btn btn-sm btn-warning">Editar</button>
+                        <button onclick="deleteBranch(${branch.id})" class="btn btn-sm btn-danger">Excluir</button>
+                    </td>
                 </tr>
-            </thead>
-            <tbody>
-    `;
+            `;
+        });
 
-    schedules.forEach(schedule => {
-        html += `
-            <tr>
-                <td>${schedule.branch_name} (${schedule.branch_code})</td>
-                <td>${new Date(schedule.scheduled_date).toLocaleDateString('pt-BR')}</td>
-                <td>${schedule.audit_type}</td>
-                <td>
-                    <button class="btn btn-primary" onclick="editSchedule(${schedule.id})">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-danger" onclick="deleteSchedule(${schedule.id})">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `;
-    });
-
-    html += '</tbody></table>';
-    container.innerHTML = html;
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    } catch (error) {
+        console.error('Erro ao carregar filiais:', error);
+        showError('Erro ao carregar filiais: ' + error.message);
+    }
 }
 
 async function loadUsers() {
-    if (!auth.isAdmin()) return;
-
     try {
-        showLoading('usersTable');
         const users = await api.get('/users');
-        displayUsersTable(users);
-        hideLoading('usersTable');
+        const container = document.getElementById('usersContainer');
+        
+        if (!container) return;
+
+        if (users.length === 0) {
+            container.innerHTML = '<p class="no-data">Nenhum usuário encontrado</p>';
+            return;
+        }
+
+        let html = '<table class="data-table"><thead><tr>';
+        html += '<th>Usuário</th><th>Função</th><th>Criado em</th><th>Ações</th>';
+        html += '</tr></thead><tbody>';
+
+        users.forEach(user => {
+            html += `
+                <tr>
+                    <td>${user.username}</td>
+                    <td>${user.role}</td>
+                    <td>${new Date(user.created_at).toLocaleDateString('pt-BR')}</td>
+                    <td>
+                        <button onclick="editUser(${user.id})" class="btn btn-sm btn-warning">Editar</button>
+                        <button onclick="deleteUser(${user.id})" class="btn btn-sm btn-danger">Excluir</button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
     } catch (error) {
         console.error('Erro ao carregar usuários:', error);
-        showError('Erro ao carregar usuários');
-        hideLoading('usersTable');
+        showError('Erro ao carregar usuários: ' + error.message);
     }
-}
-
-function displayUsersTable(users) {
-    const container = document.getElementById('usersTable');
-    
-    if (users.length === 0) {
-        container.innerHTML = '<p class="text-center">Nenhum usuário encontrado</p>';
-        return;
-    }
-
-    let html = `
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Usuário</th>
-                    <th>Papel</th>
-                    <th>Criado em</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
-
-    users.forEach(user => {
-        html += `
-            <tr>
-                <td>${user.username}</td>
-                <td>${user.role}</td>
-                <td>${new Date(user.created_at).toLocaleDateString('pt-BR')}</td>
-                <td>
-                    <button class="btn btn-primary" onclick="editUser(${user.id})">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-danger" onclick="deleteUser(${user.id})">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `;
-    });
-
-    html += '</tbody></table>';
-    container.innerHTML = html;
 }
 
 // Funções de modal
 function showModal(modalId) {
-    document.getElementById(modalId).style.display = 'block';
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'block';
+    }
 }
 
 function closeModal(modalId) {
-    document.getElementById(modalId).style.display = 'none';
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'none';
+    }
 }
 
 // Funções de auditoria
@@ -567,10 +532,12 @@ async function showNewAuditModal() {
     try {
         const branches = await api.get('/branches');
         const branchSelect = document.getElementById('auditBranch');
-        branchSelect.innerHTML = '<option value="">Selecione uma filial</option>';
-        branches.forEach(branch => {
-            branchSelect.innerHTML += `<option value="${branch.id}">${branch.name} (${branch.code})</option>`;
-        });
+        if (branchSelect) {
+            branchSelect.innerHTML = '<option value="">Selecione uma filial</option>';
+            branches.forEach(branch => {
+                branchSelect.innerHTML += `<option value="${branch.id}">${branch.name} (${branch.code})</option>`;
+            });
+        }
         
         document.getElementById('auditModalTitle').textContent = 'Nova Auditoria';
         document.getElementById('auditForm').reset();
@@ -580,16 +547,41 @@ async function showNewAuditModal() {
     }
 }
 
+// Funções de agendamento
+async function showNewScheduleModal() {
+    try {
+        const branches = await api.get('/branches');
+        const branchSelect = document.getElementById('scheduleBranch');
+        if (branchSelect) {
+            branchSelect.innerHTML = '<option value="">Selecione uma filial</option>';
+            branches.forEach(branch => {
+                branchSelect.innerHTML += `<option value="${branch.id}">${branch.name} (${branch.code})</option>`;
+            });
+        }
+        
+        document.getElementById('scheduleModalTitle').textContent = 'Novo Agendamento';
+        document.getElementById('scheduleForm').reset();
+        showModal('scheduleModal');
+    } catch (error) {
+        showError('Erro ao carregar filiais');
+    }
+}
+
+// Funções de filiais
+async function showNewBranchModal() {
+    document.getElementById('branchModalTitle').textContent = 'Nova Filial';
+    document.getElementById('branchForm').reset();
+    showModal('branchModal');
+}
+
+// Funções de usuários
+async function showNewUserModal() {
+    document.getElementById('userModalTitle').textContent = 'Novo Usuário';
+    document.getElementById('userForm').reset();
+    showModal('userModal');
+}
+
 // Funções de utilidade
-function showLoading(containerId) {
-    const container = document.getElementById(containerId);
-    container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-}
-
-function hideLoading(containerId) {
-    // A função de carregamento específica irá substituir o conteúdo
-}
-
 function showError(message) {
     // Criar elemento de alerta
     const alert = document.createElement('div');
@@ -597,7 +589,7 @@ function showError(message) {
     alert.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
     
     // Inserir no topo da página
-    const container = document.querySelector('#loginModal .modal-content') || document.querySelector('.main-content');
+    const container = document.querySelector('.main-content') || document.body;
     container.insertBefore(alert, container.firstChild);
     
     // Remover após 5 segundos
@@ -609,7 +601,7 @@ function showError(message) {
 }
 
 function showSuccess(message) {
-    // Criar elemento de alerta
+    // Criar elemento de sucesso
     const alert = document.createElement('div');
     alert.className = 'alert alert-success';
     alert.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
@@ -626,78 +618,39 @@ function showSuccess(message) {
     }, 3000);
 }
 
-function showLogin() {
-    document.getElementById('app').style.display = 'none';
-    document.getElementById('loginModal').style.display = 'block';
-}
-
-function hideLogin() {
-    document.getElementById('loginModal').style.display = 'none';
-    document.getElementById('app').style.display = 'grid';
-}
-
-// Event Listeners
+// Inicialização
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded, setting up event listeners');
-    
-    // Verificar autenticação
-    if (!auth.isAuthenticated()) {
-        showLogin();
-    } else {
-        // Mostrar informações do usuário
-        document.getElementById('userInfo').textContent = `${currentUser.username} (${currentUser.role})`;
-        
-        // Mostrar/esconder menu de usuários para administradores
-        if (auth.isAdmin()) {
-            document.getElementById('usersNav').style.display = 'block';
-            document.getElementById('newBranchBtn').style.display = 'inline-flex';
-        }
 
-        // Carregar página inicial
-        pageManager.showPage('dashboard');
+    // Verificar se já está autenticado
+    if (auth.isAuthenticated()) {
+        auth.login(authToken, currentUser);
+    } else {
+        // Mostrar modal de login
+        document.getElementById('loginModal').style.display = 'block';
+        document.getElementById('app').style.display = 'none';
     }
 
-    // Login form - CORRIGIDO para interceptar o submit
+    // Login form
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         console.log('Login form found, adding event listener');
         loginForm.addEventListener('submit', async function(e) {
-            console.log('Form submit event triggered');
-            e.preventDefault(); // Impede o envio padrão do formulário
-            e.stopPropagation(); // Para a propagação do evento
+            e.preventDefault();
+            e.stopPropagation();
             
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-
-            console.log('Login attempt:', { username, password: '***' });
-
-            if (!username || !password) {
-                showError('Por favor, preencha todos os campos');
-                return;
-            }
+            const formData = new FormData(this);
+            const credentials = {
+                username: formData.get('username'),
+                password: formData.get('password')
+            };
 
             try {
-                console.log('Calling auth.login...');
-                const response = await auth.login(username, password);
-                console.log('Login successful:', response);
-                
-                hideLogin();
-                
-                // Mostrar informações do usuário
-                document.getElementById('userInfo').textContent = `${currentUser.username} (${currentUser.role})`;
-                
-                // Mostrar/esconder menu de usuários para administradores
-                if (auth.isAdmin()) {
-                    document.getElementById('usersNav').style.display = 'block';
-                    document.getElementById('newBranchBtn').style.display = 'inline-flex';
-                }
-
-                // Carregar página inicial
-                pageManager.showPage('dashboard');
+                const response = await api.post('/auth/login', credentials);
+                auth.login(response.token, response.user);
                 showSuccess('Login realizado com sucesso!');
             } catch (error) {
-                console.error('Erro no login:', error);
-                showError('Credenciais inválidas. Verifique seu usuário e senha.');
+                showError('Erro no login: ' + error.message);
             }
         });
     } else {
@@ -705,9 +658,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Logout
-    document.getElementById('logoutBtn').addEventListener('click', function() {
-        auth.logout();
-    });
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function() {
+            auth.logout();
+        });
+    }
 
     // Navegação
     document.querySelectorAll('.nav-link').forEach(link => {
@@ -743,94 +699,47 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Form de auditoria
-    document.getElementById('auditForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(this);
-        const data = {};
-        
-        for (let [key, value] of formData.entries()) {
-            if (value === '') continue;
+    const auditForm = document.getElementById('auditForm');
+    if (auditForm) {
+        auditForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
             
-            // Converter valores booleanos
-            if (value === 'true') value = true;
-            if (value === 'false') value = false;
+            const formData = new FormData(this);
+            const data = {};
             
-            // Converter números
-            if (['branch_id', 'nps_score', 'checkups_done', 'tire_quantity', 'imported_tire_quantity', 
-                 'pirelli_tire_quantity', 'parts_quantity', 'score'].includes(key)) {
-                value = parseInt(value);
+            for (let [key, value] of formData.entries()) {
+                if (value === '') continue;
+                
+                // Converter valores booleanos
+                if (value === 'true') value = true;
+                if (value === 'false') value = false;
+                
+                // Converter números
+                if (['branch_id', 'nps_score', 'checkups_done', 'tire_quantity', 'imported_tire_quantity', 
+                     'pirelli_tire_quantity', 'parts_quantity', 'score'].includes(key)) {
+                    value = parseInt(value);
+                }
+                
+                if (['cash_balance', 'parts_stock_value', 'tires_stock_value'].includes(key)) {
+                    value = parseFloat(value);
+                }
+                
+                data[key] = value;
             }
-            
-            if (['cash_balance', 'parts_stock_value', 'tire_stock_value'].includes(key)) {
-                value = parseFloat(value);
-            }
-            
-            data[key] = value;
-        }
 
-        try {
-            await api.post('/audits', data);
-            closeModal('auditModal');
-            showSuccess('Auditoria criada com sucesso!');
-            if (pageManager.currentPage === 'audits') {
-                loadAudits();
+            try {
+                await api.post('/audits', data);
+                closeModal('auditModal');
+                showSuccess('Auditoria criada com sucesso!');
+                if (pageManager.currentPage === 'audits') {
+                    loadAudits();
+                }
+            } catch (error) {
+                showError('Erro ao criar auditoria: ' + error.message);
             }
-        } catch (error) {
-            showError('Erro ao criar auditoria: ' + error.message);
-        }
-    });
-
-    // Fechar modais clicando no X
-    document.querySelectorAll('.close').forEach(closeBtn => {
-        closeBtn.addEventListener('click', function() {
-            this.closest('.modal').style.display = 'none';
         });
-    });
-
-    // Fechar modais clicando fora
-    window.addEventListener('click', function(e) {
-        if (e.target.classList.contains('modal')) {
-            e.target.style.display = 'none';
-        }
-    });
-});
-
-// Funções de agendamento
-async function showNewScheduleModal() {
-    try {
-        const branches = await api.get('/branches');
-        const branchSelect = document.getElementById('scheduleBranch');
-        branchSelect.innerHTML = '<option value="">Selecione uma filial</option>';
-        branches.forEach(branch => {
-            branchSelect.innerHTML += `<option value="${branch.id}">${branch.name} (${branch.code})</option>`;
-        });
-        
-        document.getElementById('scheduleModalTitle').textContent = 'Novo Agendamento';
-        document.getElementById('scheduleForm').reset();
-        showModal('scheduleModal');
-    } catch (error) {
-        showError('Erro ao carregar filiais');
     }
-}
 
-// Funções de filiais
-async function showNewBranchModal() {
-    document.getElementById('branchModalTitle').textContent = 'Nova Filial';
-    document.getElementById('branchForm').reset();
-    showModal('branchModal');
-}
-
-// Funções de usuários
-async function showNewUserModal() {
-    document.getElementById('userModalTitle').textContent = 'Novo Usuário';
-    document.getElementById('userForm').reset();
-    showModal('userModal');
-}
-
-
-// Event listeners para os formulários
-document.addEventListener('DOMContentLoaded', function() {
     // Form de agendamento
     const scheduleForm = document.getElementById('scheduleForm');
     if (scheduleForm) {
@@ -916,6 +825,20 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // Fechar modais clicando no X
+    document.querySelectorAll('.close').forEach(closeBtn => {
+        closeBtn.addEventListener('click', function() {
+            this.closest('.modal').style.display = 'none';
+        });
+    });
+
+    // Fechar modais clicando fora
+    window.addEventListener('click', function(e) {
+        if (e.target.classList.contains('modal')) {
+            e.target.style.display = 'none';
+        }
+    });
 });
 
 // Funções CRUD implementadas
@@ -1049,5 +972,12 @@ async function deleteUser(id) {
             showError('Erro ao excluir usuário: ' + error.message);
         }
     }
+}
+
+// Funções de relatórios
+function generateReport(type) {
+    console.log('Gerando relatório:', type);
+    // TODO: Implementar geração de relatórios
+    showError('Funcionalidade de relatórios em desenvolvimento');
 }
 

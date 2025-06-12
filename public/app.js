@@ -629,57 +629,71 @@ function hideLogin() {
 
 // Event Listeners
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, setting up event listeners');
+    
     // Verificar autenticação
     if (!auth.isAuthenticated()) {
         showLogin();
-        return;
-    }
+    } else {
+        // Mostrar informações do usuário
+        document.getElementById('userInfo').textContent = `${currentUser.username} (${currentUser.role})`;
+        
+        // Mostrar/esconder menu de usuários para administradores
+        if (auth.isAdmin()) {
+            document.getElementById('usersNav').style.display = 'block';
+            document.getElementById('newBranchBtn').style.display = 'inline-flex';
+        }
 
-    // Mostrar informações do usuário
-    document.getElementById('userInfo').textContent = `${currentUser.username} (${currentUser.role})`;
-    
-    // Mostrar/esconder menu de usuários para administradores
-    if (auth.isAdmin()) {
-        document.getElementById('usersNav').style.display = 'block';
-        document.getElementById('newBranchBtn').style.display = 'inline-flex';
+        // Carregar página inicial
+        pageManager.showPage('dashboard');
     }
-
-    // Carregar página inicial
-    pageManager.showPage('dashboard');
 
     // Login form - CORRIGIDO para interceptar o submit
-    document.getElementById('loginForm').addEventListener('submit', async function(e) {
-        e.preventDefault(); // Impede o envio padrão do formulário
-        
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
-
-        if (!username || !password) {
-            showError('Por favor, preencha todos os campos');
-            return;
-        }
-
-        try {
-            const response = await auth.login(username, password);
-            hideLogin();
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        console.log('Login form found, adding event listener');
+        loginForm.addEventListener('submit', async function(e) {
+            console.log('Form submit event triggered');
+            e.preventDefault(); // Impede o envio padrão do formulário
+            e.stopPropagation(); // Para a propagação do evento
             
-            // Mostrar informações do usuário
-            document.getElementById('userInfo').textContent = `${currentUser.username} (${currentUser.role})`;
-            
-            // Mostrar/esconder menu de usuários para administradores
-            if (auth.isAdmin()) {
-                document.getElementById('usersNav').style.display = 'block';
-                document.getElementById('newBranchBtn').style.display = 'inline-flex';
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            console.log('Login attempt:', { username, password: '***' });
+
+            if (!username || !password) {
+                showError('Por favor, preencha todos os campos');
+                return;
             }
 
-            // Carregar página inicial
-            pageManager.showPage('dashboard');
-            showSuccess('Login realizado com sucesso!');
-        } catch (error) {
-            console.error('Erro no login:', error);
-            showError('Credenciais inválidas. Verifique seu usuário e senha.');
-        }
-    });
+            try {
+                console.log('Calling auth.login...');
+                const response = await auth.login(username, password);
+                console.log('Login successful:', response);
+                
+                hideLogin();
+                
+                // Mostrar informações do usuário
+                document.getElementById('userInfo').textContent = `${currentUser.username} (${currentUser.role})`;
+                
+                // Mostrar/esconder menu de usuários para administradores
+                if (auth.isAdmin()) {
+                    document.getElementById('usersNav').style.display = 'block';
+                    document.getElementById('newBranchBtn').style.display = 'inline-flex';
+                }
+
+                // Carregar página inicial
+                pageManager.showPage('dashboard');
+                showSuccess('Login realizado com sucesso!');
+            } catch (error) {
+                console.error('Erro no login:', error);
+                showError('Credenciais inválidas. Verifique seu usuário e senha.');
+            }
+        });
+    } else {
+        console.error('Login form not found!');
+    }
 
     // Logout
     document.getElementById('logoutBtn').addEventListener('click', function() {

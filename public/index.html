@@ -55,7 +55,7 @@
                     <i class="fas fa-tachometer-alt"></i> Dashboard
                 </a></li>
                 <li><a href="#" data-page="audits" class="nav-link">
-                    <i class="fas fa-clipboard-list"></i> Auditorias
+                    <i class="fas fa-clipboard-list"></i> Histórico de Auditorias
                 </a></li>
                 <li><a href="#" data-page="schedules" class="nav-link">
                     <i class="fas fa-calendar-alt"></i> Agendamentos
@@ -148,7 +148,7 @@
             <!-- Audits Page -->
             <div id="auditsPage" class="page">
                 <div class="page-header">
-                    <h2><i class="fas fa-clipboard-list"></i> Auditorias</h2>
+                    <h2><i class="fas fa-clipboard-list"></i> Histórico de Auditorias</h2>
                     <button id="newAuditBtn" class="btn btn-primary">
                         <i class="fas fa-plus"></i> Nova Auditoria
                     </button>
@@ -241,144 +241,338 @@
 
     <!-- Modals -->
     <div id="auditModal" class="modal">
-        <div class="modal-content large">
+        <div class="modal-content audit-modal">
             <div class="modal-header">
                 <h3 id="auditModalTitle">Nova Auditoria</h3>
                 <span class="close">&times;</span>
             </div>
             <form id="auditForm">
+                <!-- Seção 1: Informações Gerais -->
+                <div class="form-section">
+                    <h4><i class="fas fa-info-circle"></i> Informações Gerais</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="auditBranch">Filial:</label>
+                            <select id="auditBranch" name="branch_id" required></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="visitDate">Data da Visita:</label>
+                            <input type="date" id="visitDate" name="visit_date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="monthAnalyzed">Mês Analisado:</label>
+                            <input type="text" id="monthAnalyzed" name="month_analyzed" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="scheduledVisit">Visita Programada:</label>
+                            <select id="scheduledVisit" name="scheduled_visit" required>
+                                <option value="true">Sim</option>
+                                <option value="false">Não</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção 2: Categoria Loja -->
+                <div class="form-section">
+                    <h4><i class="fas fa-store"></i> Categoria Loja</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="storeCategory">Categoria da Loja:</label>
+                            <input type="text" id="storeCategory" name="store_category">
+                        </div>
+                        <div class="form-group">
+                            <label for="vatNumber">Número VAT:</label>
+                            <input type="text" id="vatNumber" name="vat_number">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção 3: Aspecto Cliente -->
+                <div class="form-section">
+                    <h4><i class="fas fa-users"></i> Aspecto Cliente</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="npsScore">Nota NPS (0-10):</label>
+                            <input type="number" id="npsScore" name="nps_score" min="0" max="10">
+                        </div>
+                        <div class="form-group">
+                            <label for="checkupsDone">Checkups Realizados:</label>
+                            <input type="number" id="checkupsDone" name="checkups_done" min="0">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção 4: Estoque -->
+                <div class="form-section">
+                    <h4><i class="fas fa-boxes"></i> Estoque</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="tyrecoStock">Estoque Tyreco:</label>
+                            <select id="tyrecoStock" name="tyreco_stock">
+                                <option value="">Selecione</option>
+                                <option value="Sim">Sim</option>
+                                <option value="Parcialmente">Parcialmente</option>
+                                <option value="Não">Não</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="monthlyInventory">Inventário Mensal:</label>
+                            <select id="monthlyInventory" name="monthly_inventory_status">
+                                <option value="">Selecione</option>
+                                <option value="Enviado">Enviado</option>
+                                <option value="Não Enviado">Não Enviado</option>
+                                <option value="Enviado com divergência">Enviado com divergência</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="stockAdjustment">Acerto de Estoque:</label>
+                            <select id="stockAdjustment" name="stock_adjustment_made">
+                                <option value="">Selecione</option>
+                                <option value="true">Sim</option>
+                                <option value="false">Não</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="salesReturns">Devoluções de Venda:</label>
+                            <select id="salesReturns" name="sales_returns_compliance">
+                                <option value="">Selecione</option>
+                                <option value="Dentro do complice">Dentro do complice</option>
+                                <option value="Fora do complice">Fora do complice</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção 5: Quantidades -->
+                <div class="form-section">
+                    <h4><i class="fas fa-calculator"></i> Quantidades</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="tireQuantity">Quantidade de Pneus:</label>
+                            <input type="number" id="tireQuantity" name="tire_quantity" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="importedTireQuantity">Pneus Importados:</label>
+                            <input type="number" id="importedTireQuantity" name="imported_tire_quantity" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="pirelliTireQuantity">Pneus Pirelli:</label>
+                            <input type="number" id="pirelliTireQuantity" name="pirelli_tire_quantity" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="partsQuantity">Quantidade de Peças:</label>
+                            <input type="number" id="partsQuantity" name="parts_quantity" min="0">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção 6: Transporte -->
+                <div class="form-section">
+                    <h4><i class="fas fa-truck"></i> Transporte</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="hasNfToShip">Possui NF a Embarcar:</label>
+                            <select id="hasNfToShip" name="has_nf_to_ship">
+                                <option value="">Selecione</option>
+                                <option value="true">Sim</option>
+                                <option value="false">Não</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção 7: Financeiro -->
+                <div class="form-section">
+                    <h4><i class="fas fa-dollar-sign"></i> Financeiro</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="cashBalance">Saldo do Caixa (R$):</label>
+                            <input type="number" id="cashBalance" name="cash_balance" step="0.01" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="partsStockValue">Valor Estoque Peças (R$):</label>
+                            <input type="number" id="partsStockValue" name="parts_stock_value" step="0.01" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="tiresStockValue">Valor Estoque Pneus (R$):</label>
+                            <input type="number" id="tiresStockValue" name="tires_stock_value" step="0.01" min="0">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seção 8: Resumo Geral -->
+                <div class="form-section">
+                    <h4><i class="fas fa-clipboard-check"></i> Resumo Geral</h4>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="generalSummary">Resumo Geral:</label>
+                            <select id="generalSummary" name="general_summary" required>
+                                <option value="">Selecione</option>
+                                <option value="de acordo">De Acordo</option>
+                                <option value="com pontos de atenção">Com Pontos de Atenção</option>
+                                <option value="em desacordo">Em Desacordo</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="score">Pontuação (0-100%):</label>
+                            <input type="number" id="score" name="score" min="0" max="100" required>
+                        </div>
+                        <div class="form-group full-width">
+                            <label for="observations">Observações:</label>
+                            <textarea id="observations" name="observations" rows="4" placeholder="Observações adicionais sobre a auditoria..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('auditModal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Auditoria</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Schedule Modal -->
+    <div id="scheduleModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="scheduleModalTitle">Novo Agendamento</h3>
+                <span class="close">&times;</span>
+            </div>
+            <form id="scheduleForm">
                 <div class="form-grid">
                     <div class="form-group">
-                        <label for="auditBranch">Filial:</label>
-                        <select id="auditBranch" name="branch_id" required></select>
+                        <label for="scheduleBranch">Filial:</label>
+                        <select id="scheduleBranch" name="branch_id" required></select>
                     </div>
                     <div class="form-group">
-                        <label for="visitDate">Data da Visita:</label>
-                        <input type="date" id="visitDate" name="visit_date" required>
+                        <label for="scheduledDate">Data Agendada:</label>
+                        <input type="date" id="scheduledDate" name="scheduled_date" required>
                     </div>
                     <div class="form-group">
-                        <label for="monthAnalyzed">Mês Analisado:</label>
-                        <input type="text" id="monthAnalyzed" name="month_analyzed" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="scheduledVisit">Visita Programada:</label>
-                        <select id="scheduledVisit" name="scheduled_visit" required>
-                            <option value="true">Sim</option>
-                            <option value="false">Não</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="storeCategory">Categoria da Loja:</label>
-                        <input type="text" id="storeCategory" name="store_category">
-                    </div>
-                    <div class="form-group">
-                        <label for="vatNumber">Número VAT:</label>
-                        <input type="text" id="vatNumber" name="vat_number">
-                    </div>
-                    <div class="form-group">
-                        <label for="npsScore">Nota NPS:</label>
-                        <input type="number" id="npsScore" name="nps_score" min="0" max="10">
-                    </div>
-                    <div class="form-group">
-                        <label for="checkupsDone">Checkups Realizados:</label>
-                        <input type="number" id="checkupsDone" name="checkups_done" min="0">
-                    </div>
-                    <div class="form-group">
-                        <label for="tyrecoStock">Estoque Tyreco:</label>
-                        <select id="tyrecoStock" name="tyreco_stock">
+                        <label for="auditType">Tipo de Auditoria:</label>
+                        <select id="auditType" name="audit_type" required>
                             <option value="">Selecione</option>
-                            <option value="Sim">Sim</option>
-                            <option value="Parcialmente">Parcialmente</option>
-                            <option value="Não">Não</option>
+                            <option value="completa">Auditoria Completa</option>
+                            <option value="parcial">Auditoria Parcial</option>
+                            <option value="somente_estoque">Somente Estoque</option>
                         </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="monthlyInventory">Inventário Mensal:</label>
-                        <select id="monthlyInventory" name="monthly_inventory_status">
-                            <option value="">Selecione</option>
-                            <option value="Enviado">Enviado</option>
-                            <option value="Não Enviado">Não Enviado</option>
-                            <option value="Enviado com divergência">Enviado com divergência</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="stockAdjustment">Acerto de Estoque:</label>
-                        <select id="stockAdjustment" name="stock_adjustment_made">
-                            <option value="">Selecione</option>
-                            <option value="true">Sim</option>
-                            <option value="false">Não</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="salesReturns">Devoluções de Venda:</label>
-                        <select id="salesReturns" name="sales_returns_compliance">
-                            <option value="">Selecione</option>
-                            <option value="Dentro do complice">Dentro do complice</option>
-                            <option value="Fora do complice">Fora do complice</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="tireQuantity">Quantidade de Pneus:</label>
-                        <input type="number" id="tireQuantity" name="tire_quantity" min="0">
-                    </div>
-                    <div class="form-group">
-                        <label for="importedTireQuantity">Pneus Importados:</label>
-                        <input type="number" id="importedTireQuantity" name="imported_tire_quantity" min="0">
-                    </div>
-                    <div class="form-group">
-                        <label for="pirelliTireQuantity">Pneus Pirelli:</label>
-                        <input type="number" id="pirelliTireQuantity" name="pirelli_tire_quantity" min="0">
-                    </div>
-                    <div class="form-group">
-                        <label for="partsQuantity">Quantidade de Peças:</label>
-                        <input type="number" id="partsQuantity" name="parts_quantity" min="0">
-                    </div>
-                    <div class="form-group">
-                        <label for="hasNfToShip">Possui NF a Embarcar:</label>
-                        <select id="hasNfToShip" name="has_nf_to_ship">
-                            <option value="">Selecione</option>
-                            <option value="true">Sim</option>
-                            <option value="false">Não</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="cashBalance">Saldo do Caixa:</label>
-                        <input type="number" id="cashBalance" name="cash_balance" step="0.01" min="0">
-                    </div>
-                    <div class="form-group">
-                        <label for="partsStockValue">Valor Estoque Peças:</label>
-                        <input type="number" id="partsStockValue" name="parts_stock_value" step="0.01" min="0">
-                    </div>
-                    <div class="form-group">
-                        <label for="tireStockValue">Valor Estoque Pneus:</label>
-                        <input type="number" id="tireStockValue" name="tire_stock_value" step="0.01" min="0">
-                    </div>
-                    <div class="form-group">
-                        <label for="generalSummary">Resumo Geral:</label>
-                        <select id="generalSummary" name="general_summary" required>
-                            <option value="">Selecione</option>
-                            <option value="de acordo">De Acordo</option>
-                            <option value="com pontos de atenção">Com Pontos de Atenção</option>
-                            <option value="em desacordo">Em Desacordo</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="score">Pontuação (%):</label>
-                        <input type="number" id="score" name="score" min="0" max="100" required>
                     </div>
                     <div class="form-group full-width">
-                        <label for="notes">Observações:</label>
-                        <textarea id="notes" name="notes" rows="4"></textarea>
+                        <label for="scheduleNotes">Observações:</label>
+                        <textarea id="scheduleNotes" name="notes" rows="3" placeholder="Observações sobre o agendamento..."></textarea>
                     </div>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal('auditModal')">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Salvar</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('scheduleModal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Agendamento</button>
                 </div>
             </form>
         </div>
     </div>
 
+    <!-- Branch Modal -->
+    <div id="branchModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="branchModalTitle">Nova Filial</h3>
+                <span class="close">&times;</span>
+            </div>
+            <form id="branchForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="branchCode">Código:</label>
+                        <input type="text" id="branchCode" name="code" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="branchName">Nome:</label>
+                        <input type="text" id="branchName" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="branchCnpj">CNPJ:</label>
+                        <input type="text" id="branchCnpj" name="cnpj" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="branchState">Estado:</label>
+                        <select id="branchState" name="state" required>
+                            <option value="">Selecione</option>
+                            <option value="AC">Acre</option>
+                            <option value="AL">Alagoas</option>
+                            <option value="AP">Amapá</option>
+                            <option value="AM">Amazonas</option>
+                            <option value="BA">Bahia</option>
+                            <option value="CE">Ceará</option>
+                            <option value="DF">Distrito Federal</option>
+                            <option value="ES">Espírito Santo</option>
+                            <option value="GO">Goiás</option>
+                            <option value="MA">Maranhão</option>
+                            <option value="MT">Mato Grosso</option>
+                            <option value="MS">Mato Grosso do Sul</option>
+                            <option value="MG">Minas Gerais</option>
+                            <option value="PA">Pará</option>
+                            <option value="PB">Paraíba</option>
+                            <option value="PR">Paraná</option>
+                            <option value="PE">Pernambuco</option>
+                            <option value="PI">Piauí</option>
+                            <option value="RJ">Rio de Janeiro</option>
+                            <option value="RN">Rio Grande do Norte</option>
+                            <option value="RS">Rio Grande do Sul</option>
+                            <option value="RO">Rondônia</option>
+                            <option value="RR">Roraima</option>
+                            <option value="SC">Santa Catarina</option>
+                            <option value="SP">São Paulo</option>
+                            <option value="SE">Sergipe</option>
+                            <option value="TO">Tocantins</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="branchCity">Cidade:</label>
+                        <input type="text" id="branchCity" name="city" required>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('branchModal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Filial</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- User Modal -->
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="userModalTitle">Novo Usuário</h3>
+                <span class="close">&times;</span>
+            </div>
+            <form id="userForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="userName">Nome de Usuário:</label>
+                        <input type="text" id="userName" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="userPassword">Senha:</label>
+                        <input type="password" id="userPassword" name="password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="userRole">Função:</label>
+                        <select id="userRole" name="role" required>
+                            <option value="">Selecione</option>
+                            <option value="administrador">Administrador</option>
+                            <option value="auditor">Auditor</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('userModal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Usuário</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

@@ -147,26 +147,35 @@ const pageManager = {
 // Funções de carregamento de dados
 async function loadDashboard() {
     try {
+        console.log('Loading dashboard...');
         showLoading('dashboardPage');
-        const data = await api.get('/dashboard');
         
-        // Atualizar cards de estatísticas
-        document.getElementById('totalBranches').textContent = data.totalBranches;
-        document.getElementById('branchesVisitedLastYear').textContent = data.branchesVisitedLastYear;
-        document.getElementById('branchesNotVisitedLastYear').textContent = data.branchesNotVisitedLastYear;
-        document.getElementById('avgScore').textContent = data.scoreStats.avgScore + '%';
+        const data = await api.get('/dashboard');
+        console.log('Dashboard data received:', data);
+        
+        // Verificar se os elementos existem antes de atualizar
+        const totalBranchesEl = document.getElementById('totalBranches');
+        const branchesVisitedEl = document.getElementById('branchesVisitedLastYear');
+        const branchesNotVisitedEl = document.getElementById('branchesNotVisitedLastYear');
+        const avgScoreEl = document.getElementById('avgScore');
+        
+        if (totalBranchesEl) totalBranchesEl.textContent = data.totalBranches || 0;
+        if (branchesVisitedEl) branchesVisitedEl.textContent = data.branchesVisitedLastYear || 0;
+        if (branchesNotVisitedEl) branchesNotVisitedEl.textContent = data.branchesNotVisitedLastYear || 0;
+        if (avgScoreEl) avgScoreEl.textContent = (data.scoreStats?.avgScore || 0) + '%';
 
         // Carregar gráficos
         await loadCharts();
 
         // Carregar atividades recentes
-        loadUpcomingVisits(data.upcomingVisits);
-        loadRecentAudits(data.recentAudits);
+        loadUpcomingVisits(data.upcomingVisits || []);
+        loadRecentAudits(data.recentAudits || []);
 
         hideLoading('dashboardPage');
+        console.log('Dashboard loaded successfully');
     } catch (error) {
         console.error('Erro ao carregar dashboard:', error);
-        showError('Erro ao carregar dados do dashboard');
+        showError('Erro ao carregar dados do dashboard: ' + error.message);
         hideLoading('dashboardPage');
     }
 }
@@ -710,7 +719,28 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Botões de nova auditoria
-    document.getElementById('newAuditBtn').addEventListener('click', showNewAuditModal);
+    const newAuditBtn = document.getElementById('newAuditBtn');
+    if (newAuditBtn) {
+        newAuditBtn.addEventListener('click', showNewAuditModal);
+    }
+
+    // Botões de novo agendamento
+    const newScheduleBtn = document.getElementById('newScheduleBtn');
+    if (newScheduleBtn) {
+        newScheduleBtn.addEventListener('click', showNewScheduleModal);
+    }
+
+    // Botões de nova filial
+    const newBranchBtn = document.getElementById('newBranchBtn');
+    if (newBranchBtn) {
+        newBranchBtn.addEventListener('click', showNewBranchModal);
+    }
+
+    // Botões de novo usuário
+    const newUserBtn = document.getElementById('newUserBtn');
+    if (newUserBtn) {
+        newUserBtn.addEventListener('click', showNewUserModal);
+    }
 
     // Form de auditoria
     document.getElementById('auditForm').addEventListener('submit', async function(e) {
@@ -766,52 +796,258 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Funções placeholder para ações futuras
+// Funções de agendamento
+async function showNewScheduleModal() {
+    try {
+        const branches = await api.get('/branches');
+        const branchSelect = document.getElementById('scheduleBranch');
+        branchSelect.innerHTML = '<option value="">Selecione uma filial</option>';
+        branches.forEach(branch => {
+            branchSelect.innerHTML += `<option value="${branch.id}">${branch.name} (${branch.code})</option>`;
+        });
+        
+        document.getElementById('scheduleModalTitle').textContent = 'Novo Agendamento';
+        document.getElementById('scheduleForm').reset();
+        showModal('scheduleModal');
+    } catch (error) {
+        showError('Erro ao carregar filiais');
+    }
+}
+
+// Funções de filiais
+async function showNewBranchModal() {
+    document.getElementById('branchModalTitle').textContent = 'Nova Filial';
+    document.getElementById('branchForm').reset();
+    showModal('branchModal');
+}
+
+// Funções de usuários
+async function showNewUserModal() {
+    document.getElementById('userModalTitle').textContent = 'Novo Usuário';
+    document.getElementById('userForm').reset();
+    showModal('userModal');
+}
+
+
+// Event listeners para os formulários
+document.addEventListener('DOMContentLoaded', function() {
+    // Form de agendamento
+    const scheduleForm = document.getElementById('scheduleForm');
+    if (scheduleForm) {
+        scheduleForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = {};
+            
+            for (let [key, value] of formData.entries()) {
+                if (value === '') continue;
+                
+                if (key === 'branch_id') {
+                    value = parseInt(value);
+                }
+                
+                data[key] = value;
+            }
+
+            try {
+                await api.post('/schedules', data);
+                closeModal('scheduleModal');
+                showSuccess('Agendamento criado com sucesso!');
+                if (pageManager.currentPage === 'schedules') {
+                    loadSchedules();
+                }
+            } catch (error) {
+                showError('Erro ao criar agendamento: ' + error.message);
+            }
+        });
+    }
+
+    // Form de filial
+    const branchForm = document.getElementById('branchForm');
+    if (branchForm) {
+        branchForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = {};
+            
+            for (let [key, value] of formData.entries()) {
+                if (value === '') continue;
+                data[key] = value;
+            }
+
+            try {
+                await api.post('/branches', data);
+                closeModal('branchModal');
+                showSuccess('Filial criada com sucesso!');
+                if (pageManager.currentPage === 'branches') {
+                    loadBranches();
+                }
+            } catch (error) {
+                showError('Erro ao criar filial: ' + error.message);
+            }
+        });
+    }
+
+    // Form de usuário
+    const userForm = document.getElementById('userForm');
+    if (userForm) {
+        userForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const data = {};
+            
+            for (let [key, value] of formData.entries()) {
+                if (value === '') continue;
+                data[key] = value;
+            }
+
+            try {
+                await api.post('/users', data);
+                closeModal('userModal');
+                showSuccess('Usuário criado com sucesso!');
+                if (pageManager.currentPage === 'users') {
+                    loadUsers();
+                }
+            } catch (error) {
+                showError('Erro ao criar usuário: ' + error.message);
+            }
+        });
+    }
+});
+
+// Funções CRUD implementadas
 function viewAudit(id) {
     console.log('Ver auditoria:', id);
+    // TODO: Implementar visualização de auditoria
 }
 
-function editAudit(id) {
-    console.log('Editar auditoria:', id);
+async function editAudit(id) {
+    try {
+        const audit = await api.get(`/audits/${id}`);
+        // Preencher formulário com dados da auditoria
+        Object.keys(audit).forEach(key => {
+            const element = document.getElementById(key) || document.querySelector(`[name="${key}"]`);
+            if (element) {
+                element.value = audit[key];
+            }
+        });
+        
+        document.getElementById('auditModalTitle').textContent = 'Editar Auditoria';
+        showModal('auditModal');
+    } catch (error) {
+        showError('Erro ao carregar auditoria: ' + error.message);
+    }
 }
 
-function deleteAudit(id) {
+async function deleteAudit(id) {
     if (confirm('Tem certeza que deseja excluir esta auditoria?')) {
-        console.log('Excluir auditoria:', id);
+        try {
+            await api.delete(`/audits/${id}`);
+            showSuccess('Auditoria excluída com sucesso!');
+            loadAudits();
+        } catch (error) {
+            showError('Erro ao excluir auditoria: ' + error.message);
+        }
     }
 }
 
 function viewBranch(id) {
     console.log('Ver filial:', id);
+    // TODO: Implementar visualização de filial
 }
 
-function editBranch(id) {
-    console.log('Editar filial:', id);
+async function editBranch(id) {
+    try {
+        const branch = await api.get(`/branches/${id}`);
+        // Preencher formulário com dados da filial
+        Object.keys(branch).forEach(key => {
+            const element = document.getElementById('branch' + key.charAt(0).toUpperCase() + key.slice(1)) || 
+                           document.querySelector(`[name="${key}"]`);
+            if (element) {
+                element.value = branch[key];
+            }
+        });
+        
+        document.getElementById('branchModalTitle').textContent = 'Editar Filial';
+        showModal('branchModal');
+    } catch (error) {
+        showError('Erro ao carregar filial: ' + error.message);
+    }
 }
 
-function deleteBranch(id) {
+async function deleteBranch(id) {
     if (confirm('Tem certeza que deseja excluir esta filial?')) {
-        console.log('Excluir filial:', id);
+        try {
+            await api.delete(`/branches/${id}`);
+            showSuccess('Filial excluída com sucesso!');
+            loadBranches();
+        } catch (error) {
+            showError('Erro ao excluir filial: ' + error.message);
+        }
     }
 }
 
-function editSchedule(id) {
-    console.log('Editar agendamento:', id);
+async function editSchedule(id) {
+    try {
+        const schedule = await api.get(`/schedules/${id}`);
+        // Preencher formulário com dados do agendamento
+        Object.keys(schedule).forEach(key => {
+            const element = document.getElementById(key) || document.querySelector(`[name="${key}"]`);
+            if (element) {
+                if (key === 'scheduled_date') {
+                    element.value = schedule[key].split('T')[0]; // Formato YYYY-MM-DD
+                } else {
+                    element.value = schedule[key];
+                }
+            }
+        });
+        
+        document.getElementById('scheduleModalTitle').textContent = 'Editar Agendamento';
+        showModal('scheduleModal');
+    } catch (error) {
+        showError('Erro ao carregar agendamento: ' + error.message);
+    }
 }
 
-function deleteSchedule(id) {
+async function deleteSchedule(id) {
     if (confirm('Tem certeza que deseja excluir este agendamento?')) {
-        console.log('Excluir agendamento:', id);
+        try {
+            await api.delete(`/schedules/${id}`);
+            showSuccess('Agendamento excluído com sucesso!');
+            loadSchedules();
+        } catch (error) {
+            showError('Erro ao excluir agendamento: ' + error.message);
+        }
     }
 }
 
-function editUser(id) {
-    console.log('Editar usuário:', id);
+async function editUser(id) {
+    try {
+        const user = await api.get(`/users/${id}`);
+        // Preencher formulário com dados do usuário (exceto senha)
+        document.getElementById('userName').value = user.username;
+        document.getElementById('userRole').value = user.role;
+        document.getElementById('userPassword').value = ''; // Não mostrar senha atual
+        
+        document.getElementById('userModalTitle').textContent = 'Editar Usuário';
+        showModal('userModal');
+    } catch (error) {
+        showError('Erro ao carregar usuário: ' + error.message);
+    }
 }
 
-function deleteUser(id) {
+async function deleteUser(id) {
     if (confirm('Tem certeza que deseja excluir este usuário?')) {
-        console.log('Excluir usuário:', id);
+        try {
+            await api.delete(`/users/${id}`);
+            showSuccess('Usuário excluído com sucesso!');
+            loadUsers();
+        } catch (error) {
+            showError('Erro ao excluir usuário: ' + error.message);
+        }
     }
 }
 

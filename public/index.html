@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Auditoria de Filiais</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <h2><i class="fas fa-lock"></i> Login</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Usuário:</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Senha:</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-sign-in-alt"></i> Entrar
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="app" class="app-container" style="display: none;">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1><i class="fas fa-clipboard-check"></i> Sistema de Auditoria</h1>
+                <div class="user-info">
+                    <span id="userInfo"></span>
+                    <button id="logoutBtn" class="btn btn-secondary">
+                        <i class="fas fa-sign-out-alt"></i> Sair
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="sidebar">
+            <ul class="nav-menu">
+                <li><a href="#" data-page="dashboard" class="nav-link active">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a></li>
+                <li><a href="#" data-page="audits" class="nav-link">
+                    <i class="fas fa-clipboard-list"></i> Auditorias
+                </a></li>
+                <li><a href="#" data-page="schedules" class="nav-link">
+                    <i class="fas fa-calendar-alt"></i> Agendamentos
+                </a></li>
+                <li><a href="#" data-page="branches" class="nav-link">
+                    <i class="fas fa-building"></i> Filiais
+                </a></li>
+                <li><a href="#" data-page="reports" class="nav-link">
+                    <i class="fas fa-chart-bar"></i> Relatórios
+                </a></li>
+                <li id="usersNav" style="display: none;"><a href="#" data-page="users" class="nav-link">
+                    <i class="fas fa-users"></i> Usuários
+                </a></li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard Page -->
+            <div id="dashboardPage" class="page active">
+                <div class="page-header">
+                    <h2><i class="fas fa-tachometer-alt"></i> Dashboard</h2>
+                </div>
+                
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-building"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="totalBranches">0</h3>
+                            <p>Total de Filiais</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="branchesVisitedLastYear">0</h3>
+                            <p>Visitadas (12 meses)</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="branchesNotVisitedLastYear">0</h3>
+                            <p>Sem Visita (12 meses)</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3 id="avgScore">0</h3>
+                            <p>Score Médio</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h3>Scores Mensais</h3>
+                        <canvas id="monthlyScoresChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Resumo Geral</h3>
+                        <canvas id="summaryChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Recent Activities -->
+                <div class="activities-grid">
+                    <div class="activity-card">
+                        <h3><i class="fas fa-calendar-check"></i> Próximas Visitas</h3>
+                        <div id="upcomingVisits" class="activity-list"></div>
+                    </div>
+                    <div class="activity-card">
+                        <h3><i class="fas fa-history"></i> Últimas Auditorias</h3>
+                        <div id="recentAudits" class="activity-list"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Audits Page -->
+            <div id="auditsPage" class="page">
+                <div class="page-header">
+                    <h2><i class="fas fa-clipboard-list"></i> Auditorias</h2>
+                    <button id="newAuditBtn" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Nova Auditoria
+                    </button>
+                </div>
+                
+                <!-- Filters -->
+                <div class="filters">
+                    <input type="date" id="auditStartDate" placeholder="Data Início">
+                    <input type="date" id="auditEndDate" placeholder="Data Fim">
+                    <select id="auditBranchFilter">
+                        <option value="">Todas as Filiais</option>
+                    </select>
+                    <button id="filterAuditsBtn" class="btn btn-secondary">
+                        <i class="fas fa-filter"></i> Filtrar
+                    </button>
+                </div>
+
+                <div id="auditsTable" class="table-container"></div>
+            </div>
+
+            <!-- Schedules Page -->
+            <div id="schedulesPage" class="page">
+                <div class="page-header">
+                    <h2><i class="fas fa-calendar-alt"></i> Agendamentos</h2>
+                    <button id="newScheduleBtn" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Novo Agendamento
+                    </button>
+                </div>
+                
+                <div id="schedulesTable" class="table-container"></div>
+            </div>
+
+            <!-- Branches Page -->
+            <div id="branchesPage" class="page">
+                <div class="page-header">
+                    <h2><i class="fas fa-building"></i> Filiais</h2>
+                    <button id="newBranchBtn" class="btn btn-primary" style="display: none;">
+                        <i class="fas fa-plus"></i> Nova Filial
+                    </button>
+                </div>
+                
+                <div id="branchesTable" class="table-container"></div>
+            </div>
+
+            <!-- Reports Page -->
+            <div id="reportsPage" class="page">
+                <div class="page-header">
+                    <h2><i class="fas fa-chart-bar"></i> Relatórios</h2>
+                </div>
+                
+                <div class="reports-grid">
+                    <div class="report-card" data-report="last-visit">
+                        <i class="fas fa-clock"></i>
+                        <h3>Última Visita por Filial</h3>
+                        <p>Relatório das últimas visitas realizadas em cada filial</p>
+                    </div>
+                    <div class="report-card" data-report="to-audit">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <h3>Filiais para Auditar</h3>
+                        <p>Filiais que precisam de auditoria</p>
+                    </div>
+                    <div class="report-card" data-report="by-period">
+                        <i class="fas fa-calendar-week"></i>
+                        <h3>Auditorias por Período</h3>
+                        <p>Relatório de auditorias em período específico</p>
+                    </div>
+                    <div class="report-card" data-report="auditor-performance">
+                        <i class="fas fa-user-check"></i>
+                        <h3>Performance dos Auditores</h3>
+                        <p>Análise de performance por auditor</p>
+                    </div>
+                </div>
+                
+                <div id="reportResults" class="report-results"></div>
+            </div>
+
+            <!-- Users Page -->
+            <div id="usersPage" class="page">
+                <div class="page-header">
+                    <h2><i class="fas fa-users"></i> Usuários</h2>
+                    <button id="newUserBtn" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Novo Usuário
+                    </button>
+                </div>
+                
+                <div id="usersTable" class="table-container"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="auditModal" class="modal">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h3 id="auditModalTitle">Nova Auditoria</h3>
+                <span class="close">&times;</span>
+            </div>
+            <form id="auditForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="auditBranch">Filial:</label>
+                        <select id="auditBranch" name="branch_id" required></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="visitDate">Data da Visita:</label>
+                        <input type="date" id="visitDate" name="visit_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="monthAnalyzed">Mês Analisado:</label>
+                        <input type="text" id="monthAnalyzed" name="month_analyzed" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="scheduledVisit">Visita Programada:</label>
+                        <select id="scheduledVisit" name="scheduled_visit" required>
+                            <option value="true">Sim</option>
+                            <option value="false">Não</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="storeCategory">Categoria da Loja:</label>
+                        <input type="text" id="storeCategory" name="store_category">
+                    </div>
+                    <div class="form-group">
+                        <label for="vatNumber">Número VAT:</label>
+                        <input type="text" id="vatNumber" name="vat_number">
+                    </div>
+                    <div class="form-group">
+                        <label for="npsScore">Nota NPS:</label>
+                        <input type="number" id="npsScore" name="nps_score" min="0" max="10">
+                    </div>
+                    <div class="form-group">
+                        <label for="checkupsDone">Checkups Realizados:</label>
+                        <input type="number" id="checkupsDone" name="checkups_done" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="tyrecoStock">Estoque Tyreco:</label>
+                        <select id="tyrecoStock" name="tyreco_stock">
+                            <option value="">Selecione</option>
+                            <option value="Sim">Sim</option>
+                            <option value="Parcialmente">Parcialmente</option>
+                            <option value="Não">Não</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="monthlyInventory">Inventário Mensal:</label>
+                        <select id="monthlyInventory" name="monthly_inventory_status">
+                            <option value="">Selecione</option>
+                            <option value="Enviado">Enviado</option>
+                            <option value="Não Enviado">Não Enviado</option>
+                            <option value="Enviado com divergência">Enviado com divergência</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="stockAdjustment">Acerto de Estoque:</label>
+                        <select id="stockAdjustment" name="stock_adjustment_made">
+                            <option value="">Selecione</option>
+                            <option value="true">Sim</option>
+                            <option value="false">Não</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="salesReturns">Devoluções de Venda:</label>
+                        <select id="salesReturns" name="sales_returns_compliance">
+                            <option value="">Selecione</option>
+                            <option value="Dentro do complice">Dentro do complice</option>
+                            <option value="Fora do complice">Fora do complice</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="tireQuantity">Quantidade de Pneus:</label>
+                        <input type="number" id="tireQuantity" name="tire_quantity" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="importedTireQuantity">Pneus Importados:</label>
+                        <input type="number" id="importedTireQuantity" name="imported_tire_quantity" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="pirelliTireQuantity">Pneus Pirelli:</label>
+                        <input type="number" id="pirelliTireQuantity" name="pirelli_tire_quantity" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="partsQuantity">Quantidade de Peças:</label>
+                        <input type="number" id="partsQuantity" name="parts_quantity" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="hasNfToShip">Possui NF a Embarcar:</label>
+                        <select id="hasNfToShip" name="has_nf_to_ship">
+                            <option value="">Selecione</option>
+                            <option value="true">Sim</option>
+                            <option value="false">Não</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="cashBalance">Saldo do Caixa:</label>
+                        <input type="number" id="cashBalance" name="cash_balance" step="0.01" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="partsStockValue">Valor Estoque Peças:</label>
+                        <input type="number" id="partsStockValue" name="parts_stock_value" step="0.01" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="tireStockValue">Valor Estoque Pneus:</label>
+                        <input type="number" id="tireStockValue" name="tire_stock_value" step="0.01" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="generalSummary">Resumo Geral:</label>
+                        <select id="generalSummary" name="general_summary" required>
+                            <option value="">Selecione</option>
+                            <option value="de acordo">De Acordo</option>
+                            <option value="com pontos de atenção">Com Pontos de Atenção</option>
+                            <option value="em desacordo">Em Desacordo</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="score">Pontuação (%):</label>
+                        <input type="number" id="score" name="score" min="0" max="100" required>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="notes">Observações:</label>
+                        <textarea id="notes" name="notes" rows="4"></textarea>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('auditModal')">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+

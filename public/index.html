@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Auditoria de Filiais</title>
+    <title>Dashboard - Auditoria - Campneus</title>
     <link rel="stylesheet" href="styles.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -12,8 +12,12 @@
     <!-- Login Modal -->
     <div id="loginModal" class="modal">
         <div class="modal-content">
-            <h2><i class="fas fa-lock"></i> Login</h2>
-            <form id="loginForm">
+            <div class="login-header">
+                <i class="fas fa-car-tire"></i>
+                <h2>Acesso ao Sistema</h2>
+                <p>Campneus - Sistema de Auditoria</p>
+            </div>
+            <form id="loginForm" method="POST">
                 <div class="form-group">
                     <label for="username">Usuário:</label>
                     <input type="text" id="username" name="username" autocomplete="username" required>
@@ -34,7 +38,7 @@
         <!-- Header -->
         <header class="header">
             <div class="header-content">
-                <h1><i class="fas fa-clipboard-check"></i> Sistema de Auditoria</h1>
+                <h1><i class="fas fa-car-tire"></i> Campneus - Auditoria</h1>
                 <div class="user-info">
                     <span id="userInfo"></span>
                     <button id="logoutBtn" class="btn btn-secondary">

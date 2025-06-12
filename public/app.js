@@ -582,11 +582,39 @@ function hideLoading(containerId) {
 }
 
 function showError(message) {
-    alert(message); // Substituir por um toast mais elegante
+    // Criar elemento de alerta
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-danger';
+    alert.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+    
+    // Inserir no topo da página
+    const container = document.querySelector('#loginModal .modal-content') || document.querySelector('.main-content');
+    container.insertBefore(alert, container.firstChild);
+    
+    // Remover após 5 segundos
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.parentNode.removeChild(alert);
+        }
+    }, 5000);
 }
 
 function showSuccess(message) {
-    alert(message); // Substituir por um toast mais elegante
+    // Criar elemento de alerta
+    const alert = document.createElement('div');
+    alert.className = 'alert alert-success';
+    alert.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
+    
+    // Inserir no topo da página
+    const container = document.querySelector('.main-content') || document.body;
+    container.insertBefore(alert, container.firstChild);
+    
+    // Remover após 3 segundos
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.parentNode.removeChild(alert);
+        }
+    }, 3000);
 }
 
 function showLogin() {
@@ -619,15 +647,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // Carregar página inicial
     pageManager.showPage('dashboard');
 
-    // Login form
+    // Login form - CORRIGIDO para interceptar o submit
     document.getElementById('loginForm').addEventListener('submit', async function(e) {
-        e.preventDefault();
+        e.preventDefault(); // Impede o envio padrão do formulário
         
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
 
+        if (!username || !password) {
+            showError('Por favor, preencha todos os campos');
+            return;
+        }
+
         try {
-            await auth.login(username, password);
+            const response = await auth.login(username, password);
             hideLogin();
             
             // Mostrar informações do usuário
@@ -641,8 +674,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Carregar página inicial
             pageManager.showPage('dashboard');
+            showSuccess('Login realizado com sucesso!');
         } catch (error) {
-            showError('Credenciais inválidas');
+            console.error('Erro no login:', error);
+            showError('Credenciais inválidas. Verifique seu usuário e senha.');
         }
     });
 

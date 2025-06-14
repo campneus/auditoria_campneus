@@ -189,8 +189,17 @@ async function loadDashboard() {
         if (branchesNotVisitedLastYearEl) branchesNotVisitedLastYearEl.textContent = data.branchesNotVisitedLastYear || 0;
         if (branchesVisitedLast6MonthsEl) branchesVisitedLast6MonthsEl.textContent = data.branchesVisitedLast6Months || 0;
 
+        // Preparar dados para os gráficos
+        const chartsData = {
+            monthlyScores: data.monthlyAnalysis ? data.monthlyAnalysis.map(item => ({
+                month: new Date(item.month).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+                avgScore: parseFloat(item.avgScore)
+            })) : [],
+            summaryDistribution: data.generalSummary || {}
+        };
+
         // Carregar gráficos
-        await loadCharts(data);
+        await loadCharts(chartsData);
 
         // Carregar atividades recentes
         await loadUpcomingVisits();
@@ -225,14 +234,28 @@ function createMonthlyScoresChart(data) {
     if (!ctx) return;
 
     try {
+        // Verificar se há dados válidos
+        if (!Array.isArray(data) || data.length === 0) {
+            console.log('Sem dados para o gráfico mensal');
+            ctx.getContext('2d').font = '14px Arial';
+            ctx.getContext('2d').fillText('Sem dados disponíveis', 50, 50);
+            return;
+        }
+
+        // Preparar dados para o gráfico
+        const labels = data.map(item => item.month);
+        const scores = data.map(item => item.avgScore);
+
+        console.log('Dados para gráfico mensal:', { labels, scores });
+
         const chart = ctx.getContext('2d');
         new Chart(chart, {
             type: 'line',
             data: {
-                labels: data.map(item => item.month) || [],
+                labels: labels,
                 datasets: [{
                     label: 'Score Médio',
-                    data: data.map(item => item.avgScore) || [],
+                    data: scores,
                     borderColor: '#FFD700',
                     backgroundColor: 'rgba(255, 215, 0, 0.1)',
                     tension: 0.4
@@ -258,17 +281,28 @@ function createSummaryChart(data) {
     if (!ctx) return;
 
     try {
+        // Verificar se há dados válidos
+        if (!data || Object.keys(data).length === 0) {
+            console.log('Sem dados para o gráfico de resumo');
+            ctx.getContext('2d').font = '14px Arial';
+            ctx.getContext('2d').fillText('Sem dados disponíveis', 50, 50);
+            return;
+        }
+
+        console.log('Dados para gráfico de resumo:', data);
+        
+        // Garantir que temos todas as categorias
+        const deAcordo = data['de acordo'] || 0;
+        const comAtencao = data['com pontos de atenção'] || 0;
+        const emDesacordo = data['em desacordo'] || 0;
+        
         const chart = ctx.getContext('2d');
         new Chart(chart, {
             type: 'doughnut',
             data: {
                 labels: ['De Acordo', 'Com Atenção', 'Em Desacordo'],
                 datasets: [{
-                    data: [
-                        data['de acordo'] || 0,
-                        data['com pontos de atenção'] || 0,
-                        data['em desacordo'] || 0
-                    ],
+                    data: [deAcordo, comAtencao, emDesacordo],
                     backgroundColor: ['#28a745', '#ffc107', '#dc3545']
                 }]
             },

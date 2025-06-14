@@ -14,20 +14,19 @@ body {
 
 /* Layout Principal */
 .app-container {
-    display: grid;
-    grid-template-areas: 
-        "header header"
-        "sidebar main";
-    grid-template-columns: 250px 1fr;
-    grid-template-rows: 60px 1fr;
+    display: block;
     height: 100vh;
-    overflow-x: hidden;
+    width: 100%;
     position: relative;
 }
 
 /* Header */
 .header {
-    grid-area: header;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 60px;
     background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
     color: #333;
     display: flex;
@@ -71,11 +70,12 @@ body {
     border-right: 1px solid #e0e0e0;
     padding: 20px 0;
     overflow-y: auto;
+    position: fixed;
+    width: 250px;
     height: calc(100vh - 60px);
-    position: sticky;
     top: 60px;
-    z-index: 900;
-    box-shadow: 1px 0 5px rgba(0,0,0,0.05);
+    left: 0;
+    z-index: 100;
 }
 
 .nav-menu {
@@ -106,10 +106,12 @@ body {
 /* Main Content */
 .main-content {
     grid-area: main;
-    padding: 20px;
+    padding: 20px 20px 20px 270px; /* Added left padding to account for sidebar */
     overflow-y: auto;
     background-color: #f8f9fa;
+    width: 100%;
     height: calc(100vh - 60px);
+    margin-top: 60px;
 }
 
 /* Pages */
@@ -621,42 +623,14 @@ form {
 
 /* Responsive */
 @media (max-width: 768px) {
-    .app-container {
-        grid-template-areas: 
-            "header"
-            "sidebar"
-            "main";
-        grid-template-columns: 1fr;
-        grid-template-rows: 60px auto 1fr;
-    }
-    
     .sidebar {
-        position: sticky;
-        top: 0;
-        z-index: 900;
+        display: none;
+    }
+    
+    .main-content {
+        padding: 20px;
         width: 100%;
-        border-right: none;
-        border-bottom: 1px solid #e0e0e0;
-        padding: 10px;
-        background: white;
-    }
-    
-    .nav-menu {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-    
-    .nav-link {
-        padding: 8px 12px;
-        border-left: none;
-        border-bottom: 3px solid transparent;
-    }
-    
-    .nav-link:hover,
-    .nav-link.active {
-        border-left-color: transparent;
-        border-bottom-color: #ffd700;
+        margin-left: 0;
     }
     
     .stats-grid {
